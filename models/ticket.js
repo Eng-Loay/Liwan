@@ -31,8 +31,8 @@ const ticketSchema = new mongoose.Schema(
       type: String,
       enum: {
         values: ["rejected", "accepted", "pending"],
-        message: "the status must be accpeted ,rejected or pending",
       },
+      default: "pending",
     },
     updatedAt: {
       type: Date,
