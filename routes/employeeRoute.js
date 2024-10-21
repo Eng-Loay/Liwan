@@ -1,6 +1,5 @@
 const employeeController = require("../controllers/employeeController.js");
 const authController = require("../controllers/authController.js");
-const Employee = require("../models/employee.js");
 const { body } = require("express-validator");
 const express = require("express");
 const router = express.Router();

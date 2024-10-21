@@ -1,16 +1,14 @@
-// models/Department.js
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
 const departmentSchema = new Schema({
   name: {
     type: String,
-    required: [true, "Missing Name"],
+    required: [true, "Missing Department Name"],
   },
   manager: {
     type: Schema.Types.ObjectId,
     ref: "Employee",
-    required: [true, "Missing Manager"],
   }, // Foreign Key
 });
 

@@ -5,6 +5,7 @@ const cookieParser = require("cookie-parser");
 
 const ticketRouter = require("./routes/ticketRoute");
 const employeeRouter = require("./routes/employeeRoute");
+const departmentRouter = require("./routes/departmentRoute");
 const globalErrorHandler = require("./controllers/errorController");
 
 const app = express();
@@ -33,5 +34,6 @@ app.use((req, res, next) => {
 
 app.use("/api/v1/tickets", ticketRouter);
 app.use("/api/v1/employees", employeeRouter);
+app.use("/api/v1/departments", departmentRouter);
 app.use(globalErrorHandler);
 module.exports = app;

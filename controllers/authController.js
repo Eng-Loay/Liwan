@@ -5,7 +5,7 @@ const catchAsync = require("../utils/catchAsync.js");
 const AppError = require("../utils/AppError.js");
 const { body, validationResult } = require("express-validator");
 const bcrypt = require("bcryptjs");
-const Employee = require("../models/employee.js");
+const Employee = require("../models/employeeModel.js");
 const { token } = require("morgan");
 const signToken = (id, type) => {
   return jwt.sign(

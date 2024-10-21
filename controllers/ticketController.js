@@ -1,4 +1,4 @@
-const Ticket = require("../models/ticket");
+const Ticket = require("../models/ticketModel");
 const catchAsync = require("../utils/catchAsync");
 
 exports.getAll = catchAsync(async (req, res) => {

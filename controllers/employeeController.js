@@ -1,4 +1,4 @@
-const Employee = require("../models/employee.js");
+const Employee = require("../models/employeeModel.js");
 const catchAsync = require("../utils/catchAsync");
 
 exports.getEmployees = catchAsync(async (req, res, next) => {
@@ -13,8 +13,9 @@ exports.getEmployees = catchAsync(async (req, res, next) => {
 });
 
 exports.createEmployee = catchAsync(async (req, res, next) => {
-  const { fname, lname, extensionsnumber, email, password } = req.body;
-  const body = { fname, lname, extensionsnumber, email, password };
+  const { fname, lname, extensionsnumber, email, password, department } =
+    req.body;
+  const body = { fname, lname, extensionsnumber, email, password, department };
   if (req.body.role) {
     body.role = req.body.role;
   }

@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 const validator = require("validator");
 const bcrypt = require("bcryptjs");
-const Department = require("../models/department");
+const Department = require("../models/departmentModel");
 const employeeSchema = new Schema(
   {
     fname: {
@@ -34,7 +34,7 @@ const employeeSchema = new Schema(
     department: {
       type: Schema.Types.ObjectId,
       ref: "Department",
-      default: null,
+      // default: null,
       // required: [true, "Missing Department"],
     },
     //virtual property
@@ -66,13 +66,6 @@ const employeeSchema = new Schema(
     toObject: { virtuals: true },
   }
 );
-
-employeeSchema.post("save", async function (doc) {
-  if (!doc.department) return;
-  await Department.findByIdAndUpdate(doc.department, {
-    $inc: { employeeCount: 1 },
-  });
-});
 
 //Middleware to hash password before saving it to DB
 employeeSchema.pre("save", async function (next) {
