@@ -7,6 +7,12 @@ const { body, validationResult } = require("express-validator");
 const bcrypt = require("bcryptjs");
 const Employee = require("../models/employee.js");
 const { token } = require("morgan");
+const sendMail = require("../utils/email.js");
+const nodemailer = require("nodemailer");
+// const transporter = nodemailer.createTestAccount(
+// sendgrid
+// );
+
 const signToken = (id, type) => {
   return jwt.sign(
     { id },
@@ -157,9 +163,10 @@ exports.protect = catchAsync(async (req, res, next) => {
 
   //Grant access to protected routes
   req.employee = freshUser;
-  console.log(req.employee);
+
   next();
 });
+
 //restriction for create ,delete ,get employee
 exports.restrictTo = (...roles) => {
   return catchAsync(async (req, res, next) => {
@@ -171,6 +178,7 @@ exports.restrictTo = (...roles) => {
     next();
   });
 };
+
 exports.refreshToken = catchAsync(async (req, res, next) => {
   // console.log(req.cookies.refreshToken);
   //1-check if refresh token exists
@@ -197,10 +205,10 @@ exports.refreshToken = catchAsync(async (req, res, next) => {
     if (employee.changedPasswordAfter(decoded.iat)) {
       return next(new AppError("PLease login in again", 401));
     }
-    //Generaten access token
+    //Generate access token
     const accessToken = signToken(employee._id, "accessToken");
 
-    //Generaten refresh token
+    //Generate refresh token
     const newRefreshToken = signToken(employee._id, "refreshToken");
 
     // Store refresh token in an HTTP-only cookie
@@ -222,4 +230,133 @@ exports.refreshToken = catchAsync(async (req, res, next) => {
   } else {
     return next(new AppError("Access Denided 💥!"));
   }
+});
+
+exports.forgotPassword = catchAsync(async (req, res, next) => {
+  // 1- Get user based on posted email
+  const emp = await Employee.findOne({ email: req.body.email });
+  if (!emp) {
+    return next(new AppError("No emp found with that email", 404));
+  }
+  console.log(emp);
+
+  // 2- Generate the random reset token
+  const resetToken = emp.createPasswordResetToken();
+  await emp.save({ validateBeforeSave: false });
+
+  // 3- Send it to user's email using nodemailer
+  const resetURL = `${req.protocol}://${req.get(
+    "host"
+  )}/api/v3/users/resetPassword/${resetToken}`;
+  const message = `Forgot your password? Please click this link to reset your password: ${resetURL}.\nIf you didn't forget your password, please ignore this email!`;
+
+  try {
+    // Nodemailer transport configuration
+
+    await sendMail({
+      email: emp.email,
+      subject: "Your password reset token(valid for 10 min)",
+      message,
+    });
+
+    res.status(200).json({
+      status: "success",
+      message: "Token sent to email",
+    });
+  } catch (err) {
+    emp.passwordResetToken = undefined;
+    emp.passwordResetExpires = undefined;
+    await emp.save({ validateBeforeSave: false });
+    return next(
+      new AppError(
+        "There was an error sending the email. Try again later!",
+        500
+      )
+    );
+  }
+});
+
+exports.resetPassword = catchAsync(async (req, res, next) => {
+  // 1- Get user based on the token
+  const hashedToken = crypto
+    .createHash("sha256")
+    .update(req.params.token)
+    .digest("hex");
+  const emp = await Employee.findOne({
+    passwordResetToken: hashedToken,
+    passwordResetExpires: { $gt: Date.now() },
+  });
+
+  // 2- If token is not expired, set new password
+  if (!emp) {
+    return next(new AppError("Token is invalid or has expired", 401));
+  }
+
+  emp.password = req.body.password;
+
+  emp.passwordResetToken = undefined;
+  emp.passwordResetExpires = undefined;
+  await emp.save();
+
+  // 3- Generate new access token and refresh token
+  const accessToken = signToken(emp._id, "accessToken");
+  const refreshToken = signToken(emp._id, "refreshToken");
+
+  // 4- Send new refresh token in HttpOnly cookie
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "Strict",
+    expires: new Date(
+      Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 60 * 1000
+    ),
+  });
+
+  // 5- Send new access token and user data
+  res.status(200).json({
+    status: "success",
+    accessToken,
+    refreshToken,
+    data: {
+      emp,
+    },
+  });
+});
+
+exports.updatePassword = catchAsync(async (req, res, next) => {
+  // Check if user is authenticated
+  if (!req.employee) {
+    // Change from req.emp to req.employee
+    return next(new AppError("User not found", 404)); // or handle as needed
+  }
+
+  console.log(req.employee); // This should log the employee object now
+  const emp = await Employee.findById(req.employee.id).select("+password"); // Change from req.emp to req.employee
+
+  // Check if employee exists
+  if (!emp) {
+    return next(new AppError("Employee not found", 404));
+  }
+
+  // 2- Check if the posted password is correct
+  if (!(await emp.correctPassword(req.body.currentpassword, emp.password))) {
+    return next(new AppError("Incorrect password", 401));
+  }
+
+  // 3- If so, update the password
+  emp.password = req.body.password;
+  await emp.save();
+
+  // 4- Clear the refresh token
+  res.cookie("refreshToken", "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "Strict",
+    expires: new Date(Date.now()),
+  });
+
+  res.status(200).json({
+    status: "success",
+    message: "Password updated successfully, and you have been logged out.",
+  });
 });
