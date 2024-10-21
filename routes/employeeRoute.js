@@ -11,15 +11,30 @@ router.get("/refreshToken", authController.refreshToken);
 
 //access only by admin
 //restrictTo('admin')
+
+router.post("/login", authController.login);
+router.post("/signup", authController.signup);
+router.get("/refreshToken", authController.refreshToken);
+router.post("/forgetpassword", authController.forgotPassword);
+router.patch("/resetpassword/:token", authController.resetPassword);
+
+router.patch(
+  "/updatepassword",
+  authController.protect,
+  authController.updatePassword
+);
+
 router.use(authController.protect, authController.restrictTo("admin"));
-router
-  .route("/")
-  .get(authController.protect, employeeController.getEmployees)
-  .post(employeeController.createEmployee);
+
 router
   .route("/:id")
   .get(employeeController.getEmployee)
   .patch(employeeController.updateEmployee)
   .delete(employeeController.deleteEmployee);
+
+router
+  .route("/")
+  .get(employeeController.getEmployees)
+  .post(employeeController.createEmployee);
 
 module.exports = router;
