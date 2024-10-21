@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 const validator = require("validator");
 const bcrypt = require("bcryptjs");
+const Department = require("../models/department");
 const employeeSchema = new Schema(
   {
     fname: {
@@ -47,7 +48,7 @@ const employeeSchema = new Schema(
       //add admin to create account
       type: String,
       enum: {
-        values: ["admin", "employee"],
+        values: ["admin", "employee", "manager"],
         message: "Invalid Role",
       },
       default: "employee",
@@ -65,6 +66,13 @@ const employeeSchema = new Schema(
     toObject: { virtuals: true },
   }
 );
+
+employeeSchema.post("save", async function (doc) {
+  if (!doc.department) return;
+  await Department.findByIdAndUpdate(doc.department, {
+    $inc: { employeeCount: 1 },
+  });
+});
 
 //Middleware to hash password before saving it to DB
 employeeSchema.pre("save", async function (next) {

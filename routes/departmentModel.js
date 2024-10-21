@@ -1,11 +1,14 @@
-// models/Department.js
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
 const departmentSchema = new Schema({
   name: {
     type: String,
-    required: [true, "Missing Name"],
+    required: [true, "Missing Department Name"],
+  },
+  employeesNumber: {
+    type: Number,
+    default: 0,
   },
   manager: {
     type: Schema.Types.ObjectId,

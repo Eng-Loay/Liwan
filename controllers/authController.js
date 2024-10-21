@@ -23,36 +23,27 @@ const signToken = (id, type) => {
 };
 
 exports.signup = catchAsync(async (req, res, next) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return next(new AppError("Validation failed.", 422));
-  }
-
-  const { fname, lname, extensionsnumber, email, password } = req.body;
-  let hashedPassword = await bcrypt.hash(password, 12);
-
-  // Check if the extensionsnumber already exists
-  const existingEmployee = await Employee.findOne({ extensionsnumber });
-  if (existingEmployee) {
-    return next(
-      new AppError(
-        "The extensions number already exists. Please choose a different one.",
-        400
-      )
-    );
-  }
+  const { fname, lname, extensionsnumber, email, password, role } = req.body;
 
   const employee = await Employee.create({
     fname,
     lname,
     extensionsnumber,
     email,
-    password: hashedPassword,
+    password,
+    role,
   });
+  if (!employee)
+    return next(
+      new AppError("An error occurred while creating the user.", 500)
+    );
 
-  res.status(201).json({ message: "User created!", EmployeeId: employee._id });
-
-  return next(new AppError("An error occurred while creating the user.", 500));
+  res.status(201).json({
+    status: "success",
+    data: {
+      employee,
+    },
+  });
 });
 
 exports.login = catchAsync(async (req, res, next) => {
