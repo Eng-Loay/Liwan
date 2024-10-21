@@ -1,5 +1,5 @@
 const Ticket = require("../models/ticket");
-const catchAsync = require("../util/catchAsync");
+const catchAsync = require("../utils/catchAsync");
 
 exports.getAll = catchAsync(async (req, res) => {
   const tickets = await Ticket.find();

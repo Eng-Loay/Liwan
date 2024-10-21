@@ -1,5 +1,5 @@
 const employeeController = require("../controllers/employeeController.js");
-const AuthController = require("../controllers/authController.js");
+const authController = require("../controllers/authController.js");
 const Employee = require("../models/employee.js");
 const { body } = require("express-validator");
 const express = require("express");
@@ -8,27 +8,16 @@ const router = express.Router();
 //restrictTo('admin')
 router
   .route("/")
-  .get(employeeController.getEmployees)
-  .post(
-    [
-      body("email")
-        .isEmail()
-        .withMessage("Please enter a valid email.")
-        .custom((value, { req }) => {
-          return Employee.findOne({ email: value }).then((userDoc) => {
-            if (userDoc) {
-              return Promise.reject("E-mail address already exists!");
-            }
-          });
-        })
-        .normalizeEmail(),
-      body("password").trim().isLength({ min: 5 }),
-      body("fname").trim().not().isEmpty(),
-      body("lname").trim().not().isEmpty(),
-      body("extensionsnumber").trim().not().isEmpty(),
-    ],
-    employeeController.createEmployee
-  );
-router.post("/login", AuthController.login);
-router.post("/signup", AuthController.signup);
+  .get(authController.protect, employeeController.getEmployees)
+  .post(employeeController.createEmployee);
+router.post("/login", authController.login);
+router.post("/signup", authController.signup);
+router.get("/refreshToken", authController.refreshToken);
+router.use(authController.protect, authController.restrictTo("admin"));
+router
+  .route("/:id")
+  .get(employeeController.getEmployee)
+  .patch(employeeController.updateEmployee)
+  .delete(employeeController.deleteEmployee);
+
 module.exports = router;
