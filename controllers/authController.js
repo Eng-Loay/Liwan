@@ -7,9 +7,38 @@ const { body, validationResult } = require("express-validator");
 const Employee = require("../models/employeeModel.js");
 const sendMail = require("../utils/email.js");
 const nodemailer = require("nodemailer");
-// const transporter = nodemailer.createTestAccount(
-// sendgrid
-// );
+const sendgridTransport = require("nodemailer-sendgrid-transport");
+const transporter = nodemailer.createTransport(
+  sendgridTransport({
+    auth: {
+      api_key:
+        "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",
+    },
+  })
+);
+const sendMails = async (options) => {
+  try {
+    const mailOptions = {
+      from: "essamloay2@gmail.com", // Replace with your authorized SendGrid email
+      to: options.email,
+      subject: options.subject,
+      text: options.text || "Please click the link to reset your password.", // Default text if no text is provided
+      html: options.html || null, // Include HTML content if provided
+    };
+
+    if (!mailOptions.text && !mailOptions.html) {
+      throw new Error(
+        "Missing email body. Provide either text or HTML content."
+      );
+    }
+
+    await transporter.sendMail(mailOptions);
+    console.log("Email sent successfully");
+  } catch (error) {
+    console.error("Error sending email: ", error);
+    throw new Error("Email failed to send.");
+  }
+};
 
 const signToken = (id, type) => {
   return jwt.sign(
@@ -224,28 +253,39 @@ exports.refreshToken = catchAsync(async (req, res, next) => {
 exports.forgotPassword = catchAsync(async (req, res, next) => {
   // 1- Get user based on posted email
   const emp = await Employee.findOne({ email: req.body.email });
-  if (!emp) {
-    return next(new AppError("No emp found with that email", 404));
-  }
   console.log(emp);
+  if (!emp) {
+    return next(new AppError("No employee found with that email", 404));
+  }
 
   // 2- Generate the random reset token
   const resetToken = emp.createPasswordResetToken();
   await emp.save({ validateBeforeSave: false });
 
-  // 3- Send it to user's email using nodemailer
-  const resetURL = `${req.protocol}://${req.get(
-    "host"
-  )}/api/v3/users/resetPassword/${resetToken}`;
-  const message = `Forgot your password? Please click this link to reset your password: ${resetURL}.\nIf you didn't forget your password, please ignore this email!`;
+  // 3- Send it to user's email using nodemailer (SendGrid)
+  const resetURL = `http://localhost:3000/reset/${resetToken}`;
+
+  // HTML message with a styled button
+  const htmlMessage = `
+    <div style="font-family: Arial, sans-serif; text-align: center; padding: 20px;">
+      <h2 style="color: #333;">Forgot your password?</h2>
+      <p style="font-size: 16px; color: #555;">
+        Please click the button below to reset your password. This link will expire in 10 minutes.
+      </p>
+      <a href="${resetURL}" style="display: inline-block; padding: 10px 20px; margin-top: 20px; background-color: #C19E7C; color: white; text-decoration: none; border-radius: 5px;">
+        Reset Password
+      </a>
+      <p style="font-size: 12px; color: #888; margin-top: 20px;">
+        If you didn't request a password reset, please ignore this email.
+      </p>
+    </div>
+  `;
 
   try {
-    // Nodemailer transport configuration
-
-    await sendMail({
+    await sendMails({
       email: emp.email,
-      subject: "Your password reset token(valid for 10 min)",
-      message,
+      subject: "Your password reset token (valid for 10 minutes)",
+      html: htmlMessage, // Sending HTML instead of plain text
     });
 
     res.status(200).json({
@@ -256,6 +296,7 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
     emp.passwordResetToken = undefined;
     emp.passwordResetExpires = undefined;
     await emp.save({ validateBeforeSave: false });
+
     return next(
       new AppError(
         "There was an error sending the email. Try again later!",
