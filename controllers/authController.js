@@ -257,7 +257,7 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
   if (!emp) {
     return next(new AppError("No employee found with that email", 404));
   }
-
+  //
   // 2- Generate the random reset token
   const resetToken = emp.createPasswordResetToken();
   await emp.save({ validateBeforeSave: false });
